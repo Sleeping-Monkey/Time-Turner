@@ -22,6 +22,7 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
@@ -126,7 +127,7 @@ public final class FaceTrackerActivity extends AppCompatActivity {
                 .setClassificationType(FaceDetector.ALL_CLASSIFICATIONS)
                 .build();
 
-        detector.setProcessor(new LargestFaceFocusingProcessor(detector, new EyesTracker()));
+        detector.setProcessor(new LargestFaceFocusingProcessor(detector, new EyesTracker(context)));
 
 //        detector.setProcessor(
 //                new MultiProcessor.Builder<>(new GraphicFaceTrackerFactory())
@@ -182,22 +183,6 @@ public final class FaceTrackerActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Callback for the result from requesting permissions. This method
-     * is invoked for every call on {@link #requestPermissions(String[], int)}.
-     * <p>
-     * <strong>Note:</strong> It is possible that the permissions request interaction
-     * with the user is interrupted. In this case you will receive empty permissions
-     * and results arrays which should be treated as a cancellation.
-     * </p>
-     *
-     * @param requestCode  The request code passed in {@link #requestPermissions(String[], int)}.
-     * @param permissions  The requested permissions. Never null.
-     * @param grantResults The grant results for the corresponding permissions
-     *                     which is either {@link PackageManager#PERMISSION_GRANTED}
-     *                     or {@link PackageManager#PERMISSION_DENIED}. Never null.
-     * @see #requestPermissions(String[], int)
-     */
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         if (requestCode != RC_HANDLE_CAMERA_PERM) {
@@ -267,18 +252,30 @@ public final class FaceTrackerActivity extends AppCompatActivity {
     private class EyesTracker extends Tracker<Face> {
 
         private final float THRESHOLD = 0.75f;
+        private MediaPlayer mp        = null;
+        private Context context;
+        private int threshold         = 0;
+        private int thresholdMax      = 20;
 
-        private EyesTracker() {
-
+        private EyesTracker(Context context) {
+            this.context = context;
         }
 
         @Override
         public void onUpdate(Detector.Detections<Face> detections, Face face) {
-            if (face.getIsLeftEyeOpenProbability() > THRESHOLD || face.getIsRightEyeOpenProbability() > THRESHOLD) {
+            if (threshold == thresholdMax && !isSoundPlaying())
+                playSound(R.raw.ugly);
+            if (face.getIsLeftEyeOpenProbability() > THRESHOLD && face.getIsRightEyeOpenProbability() > THRESHOLD) {
                 Log.i(TAG, "Eyes open");
+                if (threshold != 0)
+                    threshold--;
+                else if (isSoundPlaying())
+                    stopSound();
             }
             else {
-                Log.i(TAG, "Eyes closed");
+                Log.i(TAG, "Eyes closed: threshold: " + threshold);
+                if (threshold < thresholdMax)
+                    threshold++;
             }
         }
 
@@ -286,7 +283,31 @@ public final class FaceTrackerActivity extends AppCompatActivity {
         @Override
         public void onMissing(Detector.Detections<Face> detections) {
             super.onMissing(detections);
-            Log.i(TAG, "Eyes closed");
+            Log.i(TAG, "Eyes missing");
+            if (!isSoundPlaying())
+                playSound(R.raw.ugly);
+        }
+
+        private void stopSound()
+        {
+            if (mp != null && isSoundPlaying())
+            {
+                mp.reset();
+                mp.release();
+                mp = null;
+            }
+        }
+
+        private boolean isSoundPlaying()
+        {
+            return (mp != null && mp.isPlaying());
+        }
+
+        private void playSound(int sound)
+        {
+            stopSound();
+            mp = MediaPlayer.create(context, sound);
+            mp.start();
         }
 
         @Override
