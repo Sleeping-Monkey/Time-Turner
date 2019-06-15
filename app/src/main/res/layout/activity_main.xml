@@ -4,10 +4,17 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="org.opencv.samples.opencv_mobilenet.MainActivity">
-    <org.opencv.android.JavaCameraView
-        android:id="@+id/CameraView"
+    >
+    <com.example.donotsleep.MyCameraView
+        android:id="@+id/preview"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:visibility="visible" />
+        />
+
+    <com.example.donotsleep.MyOverlay
+        android:id="@+id/overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        />
+
 </FrameLayout>

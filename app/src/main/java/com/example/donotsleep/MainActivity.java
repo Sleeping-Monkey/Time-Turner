@@ -1,163 +1,111 @@
 package com.example.donotsleep;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
-import android.content.res.AssetManager;
 import android.os.Bundle;
 import android.util.Log;
-import org.opencv.android.BaseLoaderCallback;
-import org.opencv.android.CameraBridgeViewBase;
-import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
-import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
-import org.opencv.android.LoaderCallbackInterface;
-import org.opencv.android.OpenCVLoader;
-import org.opencv.core.Core;
-import org.opencv.core.Mat;
-import org.opencv.core.Point;
-import org.opencv.core.Scalar;
-import org.opencv.core.Size;
-import org.opencv.dnn.Net;
-import org.opencv.dnn.Dnn;
-import org.opencv.imgproc.Imgproc;
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileOutputStream;
+
+import androidx.core.app.ActivityCompat;
+
+import com.google.android.gms.vision.CameraSource;
+import com.google.android.gms.vision.Detector;
+import com.google.android.gms.vision.Tracker;
+import com.google.android.gms.vision.face.Face;
+import com.google.android.gms.vision.face.FaceDetector;
+import com.google.android.gms.vision.face.LargestFaceFocusingProcessor;
+
 import java.io.IOException;
-public class MainActivity extends Activity implements CvCameraViewListener2 {
-    // Initialize OpenCV manager.
-    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
-        @Override
-        public void onManagerConnected(int status) {
-            switch (status) {
-                case LoaderCallbackInterface.SUCCESS: {
-                    Log.i(TAG, "OpenCV loaded successfully");
-                    mOpenCvCameraView.enableView();
-                    break;
-                }
-                default: {
-                    super.onManagerConnected(status);
-                    break;
-                }
-            }
-        }
-    };
-    @Override
-    public void onResume() {
-        super.onResume();
-        if (!OpenCVLoader.initDebug()) {
-            Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
-            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION, this, mLoaderCallback);
-        }
-        else {
-            Log.d(TAG, "OpenCV library found inside package. Using it!");
-            mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
-        }
-//        OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION, this, mLoaderCallback);
-    }
+
+public class MainActivity extends Activity {
+    private static final String TAG = "MainActivity";
+    private MyCameraView preview;
+    private CameraSource cameraSource;
+    // permission request codes need to be < 256
+    private static final int RC_HANDLE_CAMERA_PERM = 2;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        // Set up camera listener.
-        mOpenCvCameraView = (CameraBridgeViewBase)findViewById(R.id.CameraView);
-        mOpenCvCameraView.setVisibility(CameraBridgeViewBase.VISIBLE);
-        mOpenCvCameraView.setCvCameraViewListener(this);
+        preview = findViewById(R.id.preview);
+        requestCameraPermission();
+        createCameraSource();
+        //preview.start(cameraSource);
     }
-    // Load a network.
-    public void onCameraViewStarted(int width, int height) {
-        String proto = getPath("MobileNetSSD_deploy.prototxt", this);
-        String weights = getPath("MobileNetSSD_deploy.caffemodel", this);
-        net = Dnn.readNetFromCaffe(proto, weights);
-        Log.i(TAG, "Network loaded successfully");
-    }
-    public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
-        final int IN_WIDTH = 300;
-        final int IN_HEIGHT = 300;
-        final float WH_RATIO = (float)IN_WIDTH / IN_HEIGHT;
-        final double IN_SCALE_FACTOR = 0.007843;
-        final double MEAN_VAL = 127.5;
-        final double THRESHOLD = 0.2;
-        // Get a new frame
-        Mat frame = inputFrame.rgba();
-        Imgproc.cvtColor(frame, frame, Imgproc.COLOR_RGBA2RGB);
-        // Forward image through network.
-        Mat blob = Dnn.blobFromImage(frame, IN_SCALE_FACTOR,
-                new Size(IN_WIDTH, IN_HEIGHT),
-                new Scalar(MEAN_VAL, MEAN_VAL, MEAN_VAL), false, false);
-        net.setInput(blob);
-        Mat detections = net.forward();
-        int cols = frame.cols();
-        int rows = frame.rows();
-        Size cropSize;
-        if ((float)cols / rows > WH_RATIO) {
-            cropSize = new Size(rows * WH_RATIO, rows);
-        } else {
-            cropSize = new Size(cols, cols / WH_RATIO);
+
+    private void requestCameraPermission() {
+        Log.w(TAG, "Camera permission is not granted. Requesting permission");
+
+        final String[] permissions = new String[]{Manifest.permission.CAMERA};
+
+        if (!ActivityCompat.shouldShowRequestPermissionRationale(this,
+                Manifest.permission.CAMERA)) {
+            ActivityCompat.requestPermissions(this, permissions, RC_HANDLE_CAMERA_PERM);
         }
-        int y1 = (int)(rows - cropSize.height) / 2;
-        int y2 = (int)(y1 + cropSize.height);
-        int x1 = (int)(cols - cropSize.width) / 2;
-        int x2 = (int)(x1 + cropSize.width);
-        Mat subFrame = frame.submat(y1, y2, x1, x2);
-        cols = subFrame.cols();
-        rows = subFrame.rows();
-        detections = detections.reshape(1, (int)detections.total() / 7);
-        for (int i = 0; i < detections.rows(); ++i) {
-            double confidence = detections.get(i, 2)[0];
-            if (confidence > THRESHOLD) {
-                int classId = (int)detections.get(i, 1)[0];
-                int xLeftBottom = (int)(detections.get(i, 3)[0] * cols);
-                int yLeftBottom = (int)(detections.get(i, 4)[0] * rows);
-                int xRightTop   = (int)(detections.get(i, 5)[0] * cols);
-                int yRightTop   = (int)(detections.get(i, 6)[0] * rows);
-                // Draw rectangle around detected object.
-                Imgproc.rectangle(subFrame, new Point(xLeftBottom, yLeftBottom),
-                        new Point(xRightTop, yRightTop),
-                        new Scalar(0, 255, 0));
-                String label = classNames[classId] + ": " + confidence;
-                int[] baseLine = new int[1];
-                Size labelSize = Imgproc.getTextSize(label, Core.FONT_HERSHEY_SIMPLEX, 0.5, 1, baseLine);
-                // Draw background for label.
-                Imgproc.rectangle(subFrame, new Point(xLeftBottom, yLeftBottom - labelSize.height),
-                        new Point(xLeftBottom + labelSize.width, yLeftBottom + baseLine[0]),
-                        new Scalar(255, 255, 255), Core.FILLED);
-                // Write class name and confidence.
-                Imgproc.putText(subFrame, label, new Point(xLeftBottom, yLeftBottom),
-                        Core.FONT_HERSHEY_SIMPLEX, 0.5, new Scalar(0, 0, 0));
+    }
+    @SuppressLint("MissingPermission")
+    private void createCameraSource() {
+        Context activityContext = this.getApplicationContext();
+        FaceDetector detector = new FaceDetector.Builder(activityContext).setTrackingEnabled(true).setClassificationType(FaceDetector.ALL_CLASSIFICATIONS).setMode(FaceDetector.FAST_MODE).build();
+
+        detector.setProcessor(new LargestFaceFocusingProcessor(detector, new EyesTracker()));
+
+        cameraSource = new CameraSource.Builder(
+                activityContext, detector
+        ).setRequestedPreviewSize(
+            1024, 768).setFacing(
+                    CameraSource.CAMERA_FACING_FRONT
+        ).setRequestedFps(30.0f).build();
+
+        try {
+            cameraSource.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+    }
+
+    private class EyesTracker extends Tracker<Face> {
+
+        private final float THRESHOLD = 0.75f;
+
+        private EyesTracker() {
+
+        }
+
+        @Override
+        public void onUpdate(Detector.Detections<Face> detections, Face face) {
+            if (face.getIsLeftEyeOpenProbability() > THRESHOLD || face.getIsRightEyeOpenProbability() > THRESHOLD) {
+                Log.i(TAG, "Eyes open");
+            }
+            else {
+                Log.i(TAG, "Eyes closed");
             }
         }
-        return frame;
-    }
-    public void onCameraViewStopped() {}
-    // Upload file to storage and return a path.
-    private static String getPath(String file, Context context) {
-        AssetManager assetManager = context.getAssets();
-        BufferedInputStream inputStream = null;
-        try {
-            // Read data from assets.
-            inputStream = new BufferedInputStream(assetManager.open(file));
-            byte[] data = new byte[inputStream.available()];
-            inputStream.read(data);
-            inputStream.close();
-            // Create copy file in storage.
-            File outFile = new File(context.getFilesDir(), file);
-            FileOutputStream os = new FileOutputStream(outFile);
-            os.write(data);
-            os.close();
-            // Return a path to file which may be read in common way.
-            return outFile.getAbsolutePath();
-        } catch (IOException ex) {
-            Log.i(TAG, "Failed to upload a file: " + ex.toString());
+
+        @Override
+        public void onMissing(Detector.Detections<Face> detections) {
+            super.onMissing(detections);
+            Log.i(TAG, "Eyes closed");
         }
-        return "";
+
+        @Override
+        public void onDone() {
+            super.onDone();
+        }
     }
-    private static final String TAG = "OpenCV/Sample/MobileNet";
-    private static final String[] classNames = {"background",
-            "aeroplane", "bicycle", "bird", "boat",
-            "bottle", "bus", "car", "cat", "chair",
-            "cow", "diningtable", "dog", "horse",
-            "motorbike", "person", "pottedplant",
-            "sheep", "sofa", "train", "tvmonitor"};
-    private Net net;
-    private CameraBridgeViewBase mOpenCvCameraView;
 }
