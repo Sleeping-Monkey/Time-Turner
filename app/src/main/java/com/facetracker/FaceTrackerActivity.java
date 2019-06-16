@@ -22,6 +22,7 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.graphics.drawable.Drawable;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.support.design.widget.Snackbar;
@@ -29,6 +30,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.ImageButton;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
@@ -256,9 +258,11 @@ public final class FaceTrackerActivity extends AppCompatActivity {
         private Context context;
         private int threshold         = 0;
         private int thresholdMax      = 20;
+        private ImageButton eyeicon = null;
 
         private EyesTracker(Context context) {
             this.context = context;
+            eyeicon = (ImageButton) findViewById(R.id.eyeicon);
         }
 
         @Override
@@ -267,12 +271,15 @@ public final class FaceTrackerActivity extends AppCompatActivity {
                 playSound(R.raw.ugly);
             if (face.getIsLeftEyeOpenProbability() > THRESHOLD && face.getIsRightEyeOpenProbability() > THRESHOLD) {
                 Log.i(TAG, "Eyes open");
+                eyeicon.setBackgroundResource(R.drawable.open);
                 if (threshold != 0)
                     threshold--;
                 else if (isSoundPlaying())
                     stopSound();
             }
             else {
+                if (threshold > 5)
+                    eyeicon.setBackgroundResource(R.drawable.closed);
                 Log.i(TAG, "Eyes closed: threshold: " + threshold);
                 if (threshold < thresholdMax)
                     threshold++;
@@ -283,6 +290,8 @@ public final class FaceTrackerActivity extends AppCompatActivity {
         @Override
         public void onMissing(Detector.Detections<Face> detections) {
             super.onMissing(detections);
+            if (threshold > 5)
+                eyeicon.setBackgroundResource(R.drawable.closed);
             Log.i(TAG, "Eyes missing");
             if (!isSoundPlaying())
                 playSound(R.raw.ugly);
