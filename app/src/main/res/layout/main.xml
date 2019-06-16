@@ -10,18 +10,20 @@
     android:layout_height="match_parent"
     android:keepScreenOn="true">
 
-  <ImageButton
-      android:id="@+id/eyeicon"
-      android:layout_width="74dp"
-      android:layout_height="74dp"
-      android:background="@drawable/open"
-      />
 
   <com.facetracker.CameraSourcePreview
       android:id="@+id/preview"
       android:layout_width="match_parent"
       android:layout_height="match_parent"
       android:layout_weight="1">
+
+    <ImageButton
+        android:id="@+id/eyeicon"
+        android:layout_width="74dp"
+        android:layout_height="74dp"
+        android:background="@drawable/open"
+        android:backgroundTint="#BFFFFFFF"
+        />
 
     <com.facetracker.GraphicOverlay
         android:id="@+id/faceOverlay"
@@ -35,8 +37,13 @@
       android:layout_width="match_parent"
       android:layout_height="match_parent"
       android:switchMinWidth="100dp"
+      android:textStyle="bold"
+      android:thumbTint="#FFFFFF"
+      android:textOn="ON"
+      android:textOff="OFF"
+      app:showText="true"
       android:layout_weight="3"
-      android:text="@string/switch_on" />
+      android:text="Switch" />
 
   <Button
       android:id="@+id/settings"
