@@ -335,7 +335,7 @@ public final class FaceTrackerActivity extends AppCompatActivity {
             Log.d(TAG, "Eyes missing");
             if (!isSoundPlaying())
             {
-//                Notifi();
+                Notifi();
                 playSound(R.raw.ugly);
             }
             mOverlay.remove(mFaceGraphic);
