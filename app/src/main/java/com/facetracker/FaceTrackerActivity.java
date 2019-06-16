@@ -16,23 +16,29 @@
 package com.facetracker;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.media.MediaPlayer;
+import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.RequiresApi;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.CompoundButton;
 import android.widget.ImageButton;
+import android.widget.Switch;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
@@ -131,7 +137,7 @@ public final class FaceTrackerActivity extends AppCompatActivity {
                 .setClassificationType(FaceDetector.ALL_CLASSIFICATIONS)
                 .build();
 
-        detector.setProcessor(new LargestFaceFocusingProcessor(detector, new EyesTracker(context)));
+        detector.setProcessor(new LargestFaceFocusingProcessor(detector, new EyesTracker(context, mGraphicOverlay)));
 
 //        detector.setProcessor(
 //                new MultiProcessor.Builder<>(new GraphicFaceTrackerFactory())
@@ -255,34 +261,60 @@ public final class FaceTrackerActivity extends AppCompatActivity {
 
     private class EyesTracker extends Tracker<Face> {
 
-        private final float THRESHOLD = 0.75f;
+        private final float THRESHOLD = 0.50f;
         private MediaPlayer mp        = null;
         private Context context;
         private int threshold         = 0;
-        private int thresholdMax      = 20;
+        private int thresholdMax      = 28;
         private ImageButton eyeicon = null;
-        private NotificationManager nm;
+        private Switch on_off = null;
+        private boolean on = false;
 
-        private EyesTracker(Context context) {
+        private GraphicOverlay mOverlay;
+        private FaceGraphic mFaceGraphic;
+
+        @RequiresApi(api = Build.VERSION_CODES.ICE_CREAM_SANDWICH)
+        private EyesTracker(Context context, GraphicOverlay overlay) {
             this.context = context;
             eyeicon = (ImageButton) findViewById(R.id.eyeicon);
-            nm = (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
+            on_off = (Switch)findViewById(R.id.on_off);
+            mOverlay = overlay;
+            mFaceGraphic = new FaceGraphic(overlay);
+            on_off.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    on = isChecked;
+                }
+            });
         }
 
+
+
+        @SuppressLint("NewApi")
         @Override
         public void onUpdate(Detector.Detections<Face> detections, Face face) {
+            if (!on) {
+                if (isSoundPlaying()) {
+                    stopSound();
+                }
+                eyeicon.setBackgroundResource(R.drawable.open);
+                return;
+            }
+            mOverlay.add(mFaceGraphic);
+            mFaceGraphic.updateFace(face);
             if (threshold == thresholdMax && !isSoundPlaying())
                 playSound(R.raw.ugly);
             if (face.getIsLeftEyeOpenProbability() > THRESHOLD && face.getIsRightEyeOpenProbability() > THRESHOLD) {
                 Log.i(TAG, "Eyes open");
                 eyeicon.setBackgroundResource(R.drawable.open);
-                if (threshold != 0)
-                    threshold--;
-                else if (isSoundPlaying())
+                if (threshold > 0) {
+                    threshold-=3;
+                }
+                else if (isSoundPlaying()) {
                     stopSound();
+                }
             }
             else {
-                if (threshold > 5)
+                if (threshold > 20)
                     eyeicon.setBackgroundResource(R.drawable.closed);
                 Log.i(TAG, "Eyes closed: threshold: " + threshold);
                 if (threshold < thresholdMax)
@@ -294,16 +326,31 @@ public final class FaceTrackerActivity extends AppCompatActivity {
         @Override
         public void onMissing(Detector.Detections<Face> detections) {
             super.onMissing(detections);
+            if (!on) {
+                if (isSoundPlaying()) {
+                    stopSound();
+                }
+                eyeicon.setBackgroundResource(R.drawable.open);
+                return;
+            }
             if (threshold > 5)
                 eyeicon.setBackgroundResource(R.drawable.closed);
             Log.i(TAG, "Eyes missing");
             if (!isSoundPlaying())
             {
-                NotificationCompat.Builder builder = new NotificationCompat.Builder(context);
-                builder.setSmallIcon(R.drawable.closed).setContentTitle("Some operation").setContentText("Preparing");
-                nm.notify(1, builder.build());
+//                Notifi();
                 playSound(R.raw.ugly);
             }
+            mOverlay.remove(mFaceGraphic);
+        }
+
+        synchronized private void Notifi()
+        {
+            Notification notification = new Notification(R.drawable.closed,
+                    "HOla", System.currentTimeMillis());
+
+            NotificationManager nm = (NotificationManager) getApplicationContext().getSystemService(NOTIFICATION_SERVICE);
+            nm.notify("Arrr", 0, notification);
         }
 
         private void stopSound()
@@ -331,6 +378,7 @@ public final class FaceTrackerActivity extends AppCompatActivity {
         @Override
         public void onDone() {
             super.onDone();
+            mOverlay.remove(mFaceGraphic);
         }
     }
 

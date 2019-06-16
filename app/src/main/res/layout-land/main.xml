@@ -2,16 +2,27 @@
 
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/topLayout"
-    android:orientation="horizontal"
+    android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:keepScreenOn="true">
 
+
   <com.facetracker.CameraSourcePreview
       android:id="@+id/preview"
       android:layout_width="match_parent"
-      android:layout_height="match_parent">
+      android:layout_height="match_parent"
+      android:layout_weight="1">
+
+    <ImageButton
+        android:id="@+id/eyeicon"
+        android:layout_width="74dp"
+        android:layout_height="74dp"
+        android:background="@drawable/open"
+        android:backgroundTint="#BFFFFFFF" />
 
     <com.facetracker.GraphicOverlay
         android:id="@+id/faceOverlay"

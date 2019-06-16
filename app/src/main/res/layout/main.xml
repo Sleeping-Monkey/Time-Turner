@@ -34,22 +34,17 @@
 
   <Switch
       android:id="@+id/on_off"
-      android:layout_width="match_parent"
-      android:layout_height="match_parent"
+      android:layout_width="208dp"
+      android:layout_height="313dp"
+      android:layout_weight="3"
+      android:checked="false"
       android:switchMinWidth="100dp"
+      android:textOff="OFF"
+      android:textOn="ON"
       android:textStyle="bold"
       android:thumbTint="#FFFFFF"
-      android:textOn="ON"
-      android:textOff="OFF"
       app:showText="true"
-      android:layout_weight="3"
-      android:text="Switch" />
+      tools:checked="false" />
 
-  <Button
-      android:id="@+id/settings"
-      android:layout_width="match_parent"
-      android:layout_height="match_parent"
-      android:layout_weight="3"
-      android:text="@string/settings" />
 
 </LinearLayout>
