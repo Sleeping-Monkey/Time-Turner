@@ -19,6 +19,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
@@ -27,6 +28,7 @@ import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -259,10 +261,12 @@ public final class FaceTrackerActivity extends AppCompatActivity {
         private int threshold         = 0;
         private int thresholdMax      = 20;
         private ImageButton eyeicon = null;
+        private NotificationManager nm;
 
         private EyesTracker(Context context) {
             this.context = context;
             eyeicon = (ImageButton) findViewById(R.id.eyeicon);
+            nm = (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
         }
 
         @Override
@@ -294,7 +298,12 @@ public final class FaceTrackerActivity extends AppCompatActivity {
                 eyeicon.setBackgroundResource(R.drawable.closed);
             Log.i(TAG, "Eyes missing");
             if (!isSoundPlaying())
+            {
+                NotificationCompat.Builder builder = new NotificationCompat.Builder(context);
+                builder.setSmallIcon(R.drawable.closed).setContentTitle("Some operation").setContentText("Preparing");
+                nm.notify(1, builder.build());
                 playSound(R.raw.ugly);
+            }
         }
 
         private void stopSound()
