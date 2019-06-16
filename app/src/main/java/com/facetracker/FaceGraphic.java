@@ -26,10 +26,7 @@ import com.google.android.gms.vision.face.Face;
  * graphic overlay view.
  */
 class FaceGraphic extends GraphicOverlay.Graphic {
-    private static final float FACE_POSITION_RADIUS = 10.0f;
     private static final float ID_TEXT_SIZE = 40.0f;
-    private static final float ID_Y_OFFSET = 50.0f;
-    private static final float ID_X_OFFSET = -50.0f;
     private static final float BOX_STROKE_WIDTH = 2.0f;
 
     private static final int COLOR_CHOICES[] = {
@@ -48,8 +45,6 @@ class FaceGraphic extends GraphicOverlay.Graphic {
     private Paint mBoxPaint;
 
     private volatile Face mFace;
-    private int mFaceId;
-    private float mFaceHappiness;
 
     FaceGraphic(GraphicOverlay overlay) {
         super(overlay);
@@ -69,11 +64,6 @@ class FaceGraphic extends GraphicOverlay.Graphic {
         mBoxPaint.setStyle(Paint.Style.STROKE);
         mBoxPaint.setStrokeWidth(BOX_STROKE_WIDTH);
     }
-
-    void setId(int id) {
-        mFaceId = id;
-    }
-
 
     /**
      * Updates the face instance from the detection of the most recent frame.  Invalidates the
