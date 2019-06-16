@@ -31,6 +31,7 @@ import android.os.Bundle;
 import android.support.annotation.RequiresApi;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -268,8 +269,10 @@ public final class FaceTrackerActivity extends AppCompatActivity {
         private Switch on_off = null;
         private boolean on = false;
 
+        private NotificationCompat.Builder builder;
         private GraphicOverlay mOverlay;
         private FaceGraphic mFaceGraphic;
+        private NotificationManager NM;
 
         @RequiresApi(api = Build.VERSION_CODES.ICE_CREAM_SANDWICH)
         private EyesTracker(Context context, GraphicOverlay overlay) {
@@ -283,6 +286,14 @@ public final class FaceTrackerActivity extends AppCompatActivity {
                     on = isChecked;
                 }
             });
+
+            builder = new NotificationCompat.Builder(context);
+            builder.setVibrate(new long[] {1000, 1000, 0, 0 ,0, 1000, 1000, 0, 1000});
+            builder.setSmallIcon(R.drawable.closed);
+            builder.setPriority(2);
+            builder.setContentTitle("Sos!");
+            builder.setContentText("...");
+            NM = (NotificationManager) getApplicationContext().getSystemService(NOTIFICATION_SERVICE);
         }
 
 
@@ -311,8 +322,10 @@ public final class FaceTrackerActivity extends AppCompatActivity {
                 }
             }
             else {
-                if (TIME_THRESHOLD > 20)
+                if (TIME_THRESHOLD > 20) {
+                    Notifi();
                     eyeicon.setBackgroundResource(R.drawable.closed);
+                }
                 Log.d(TAG, "Eyes closed: TIME_THRESHOLD: " + TIME_THRESHOLD);
                 if (TIME_THRESHOLD < TIME_THRESHOLD_MAX)
                     TIME_THRESHOLD++;
@@ -343,11 +356,8 @@ public final class FaceTrackerActivity extends AppCompatActivity {
 
         synchronized private void Notifi()
         {
-            Notification notification = new Notification(R.drawable.closed,
-                    "Test", System.currentTimeMillis());
-
-            NotificationManager nm = (NotificationManager) getApplicationContext().getSystemService(NOTIFICATION_SERVICE);
-            nm.notify("Test", 0, notification);
+            Notification notification = builder.build();
+            NM.notify("do not sleep!", 0, notification);
         }
 
         private void stopSound()
